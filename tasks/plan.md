@@ -34,10 +34,10 @@ scaffold (wrangler, vitest, fixtures)
 ## Task List
 
 ### Phase 1: Data in (fail fast on the scraper)
-- [ ] Task 1: Scaffold the Worker, test setup and fixtures
-- [ ] Task 2: `time.ts`: BRT parsing, year inference, formatting
-- [ ] Task 3: Sportune parser: HTML → `RawListing[]`
-- [ ] Task 4: Normalize, D1 schema and the scheduled scrape
+- [x] Task 1: Scaffold the Worker, test setup and fixtures
+- [x] Task 2: `time.ts`: BRT parsing, year inference, formatting
+- [x] Task 3: Sportune parser: HTML → `RawListing[]`
+- [x] Task 4: Normalize, D1 schema and the scheduled scrape
 
 ### Checkpoint A: real data in local D1
 - [ ] `npm test` and `npm run typecheck` pass
@@ -45,8 +45,8 @@ scaffold (wrangler, vitest, fixtures)
 - [ ] Felipe reviews before Phase 2
 
 ### Phase 2: The preview (the product)
-- [ ] Task 5: `GET /:team` card page with OG meta
-- [ ] Task 6: `GET /:team/og.png`
+- [x] Task 5: `GET /:team` card page with OG meta
+- [x] Task 6: `GET /:team/og.png`
 - [ ] Task 7: First deploy to workers.dev and the WhatsApp refresh test
 
 ### Checkpoint B: shareable link
@@ -55,9 +55,9 @@ scaffold (wrangler, vitest, fixtures)
 - [ ] Felipe reviews before Phase 3
 
 ### Phase 3: Around the preview
-- [ ] Task 8: `GET /:team.ics`
-- [ ] Task 9: Channel override (form, POST, card label)
-- [ ] Task 10: Home page, 404 and README
+- [x] Task 8: `GET /:team.ics`
+- [x] Task 9: Channel override (form, POST, card label)
+- [x] Task 10: Home page, 404 and README
 
 ### Checkpoint C: complete
 - [ ] All 7 SPEC success criteria checked, with evidence

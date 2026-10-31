@@ -8,13 +8,15 @@ export type Node = El | string;
 
 const VOID = new Set(["br", "hr", "img", "input", "meta", "link", "source", "wbr"]);
 const TOKEN = /<!--[\s\S]*?-->|<!doctype[^>]*>|<\/([a-zA-Z0-9]+)\s*>|<([a-zA-Z0-9]+)((?:"[^"]*"|'[^']*'|[^'">])*)>|[^<]+|</gi;
-const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", times: "×" };
+// Raw-text elements: their content may contain "<table>" strings that are not markup.
+const RAW_TEXT = /<(script|style|template)\b[\s\S]*?<\/\1\s*>/gi;
 
 function decode(text: string): string {
   return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, code: string) => {
     if (code[0] === "#") {
       const n = code[1] === "x" || code[1] === "X" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
-      return String.fromCodePoint(n);
+      return Number.isInteger(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : whole;
     }
     return ENTITIES[code.toLowerCase()] ?? whole;
   });
@@ -23,7 +25,7 @@ function decode(text: string): string {
 export function parseHtml(html: string): El {
   const root: El = { tag: "#root", attrs: "", children: [] };
   const stack: El[] = [root];
-  for (const m of html.matchAll(TOKEN)) {
+  for (const m of html.replace(RAW_TEXT, "").matchAll(TOKEN)) {
     const [token, closeTag, openTag, attrs = ""] = m;
     const top = stack[stack.length - 1]!;
     if (token.startsWith("<!")) continue;
