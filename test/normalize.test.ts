@@ -39,6 +39,12 @@ describe("normalize", () => {
     expect(m.kickoffDateBrt).toBe("2026-11-04");
   });
 
+  it("rolls listings over the new year into the right ids", () => {
+    const dec20 = new Date("2026-12-20T15:00:00Z");
+    expect(normalize({ ...raw, date: "31/12" }, dec20)!.id).toBe("sao-paulo-corinthians-brasileirao-serie-a-2026-12-31");
+    expect(normalize({ ...raw, date: "05/01" }, dec20)!.kickoffUtc).toBe("2027-01-06T00:30:00.000Z");
+  });
+
   it("drops a row with an unreadable date", () => {
     expect(normalize({ ...raw, date: "??" }, NOW)).toBeNull();
   });

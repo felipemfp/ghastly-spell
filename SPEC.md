@@ -59,12 +59,14 @@ Real HTML snapshots of all three pages are captured at scaffold time into `test/
 ## Commands
 
 ```bash
-npm install
-npm run dev          # wrangler dev, local D1
+npx npm@11 install      # npm 10.9 crashes resolving vitest's peers; npm 11 also gates install scripts (allowScripts in package.json)
+npm run dev          # wrangler dev --test-scheduled, local D1
 npm test             # vitest run
 npm run typecheck    # tsc --noEmit
 npm run db:migrate   # wrangler d1 migrations apply onde-passa --local
-npm run scrape:local # trigger the cron handler once against local D1
+npm run scrape:local # with dev running: hit /__scheduled to run the cron once
+npm run check:og     # with dev running: render real OG PNGs (needs network for fonts), assert < 300 KB
+npm run check:bundle # wrangler deploy --dry-run, prints the bundle size
 npm run deploy       # wrangler deploy  (ASK FIRST)
 ```
 
@@ -103,6 +105,8 @@ CREATE TABLE matches (
   id            TEXT PRIMARY KEY,   -- `${home}-${away}-${competition}-${dateBRT}` e.g. flamengo-palmeiras-brasileirao-2026-11-04
   home          TEXT NOT NULL,      -- team slug, or raw name if not in the allowlist
   away          TEXT NOT NULL,
+  home_slug     TEXT NOT NULL,      -- allowlist slug via teams.ts aliases, else slugified name
+  away_slug     TEXT NOT NULL,
   competition   TEXT NOT NULL,
   kickoff_date_brt TEXT NOT NULL,   -- YYYY-MM-DD in America/Sao_Paulo
   kickoff_utc   TEXT,               -- ISO 8601, UTC; NULL while the time is "a confirmar"
@@ -156,7 +160,7 @@ export function effectiveChannels(match: Match, override: Override | null): Chan
 
 - Files and slugs in kebab-case, functions in camelCase, types in PascalCase.
 - User-facing text in pt-BR. Code, logs and comments in English.
-- Never format a date with the server's timezone. Use `time.ts` (`Intl.DateTimeFormat` with `timeZone: "America/Sao_Paulo"`).
+- Never format a date with the server's timezone. Use `time.ts`, which applies Brasília's fixed UTC-3 offset (no DST since 2019) so output never depends on the runtime timezone.
 - No new dependency without asking.
 
 ## Testing Strategy
@@ -167,7 +171,7 @@ Gate tests (Vitest in the Workers pool, local, no network, under 2s):
 - **time:** 21:30 BRT on 2026-11-04 → `2026-11-05T00:30:00Z`, and formatting back gives `qua 04/11 21:30`.
 - **store:** next match selection (2h window, `missing_runs` hiding), the override precedence rule both ways, an empty scrape writes nothing.
 - **web:** `/:team` HTML contains the expected `og:title`, `/:team.ics` parses and has stable UIDs, a wrong passcode returns 403, an unknown team returns 404.
-- **og:** the PNG renders with status 200 and is under 300 KB.
+- **og:** the route returns `image/png` with cache headers and logs its size, using an injected renderer (gate tests stay offline). The real render (Google Fonts) is checked by `npm run check:og`, which asserts PNG and < 300 KB.
 
 Rules: write the failing test first. Every bug gets a regression test. No snapshots of whole HTML pages (change detectors). Assert on the meta tags and fields.
 

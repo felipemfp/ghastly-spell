@@ -10,24 +10,35 @@ export const fetchSportune: FetchPage = async (teamSlug) => {
   return res.text();
 };
 
-// The upcoming table is the one whose last header is "Onde assistir"; past results say "Onde passou".
 export function parseSportune(html: string): RawListing[] {
+  return parseSportunePage(html).listings;
+}
+
+// The upcoming table is the one whose last header is "Onde assistir"; past results say "Onde passou".
+// `skipped` counts data rows that did not parse, so a partial markup change is visible in the logs.
+export function parseSportunePage(html: string): { listings: RawListing[]; skipped: number } {
   const table = findAll(parseHtml(html), "table").find((t) =>
     findAll(t, "th").some((th) => squash(text(th)) === "Onde assistir"),
   );
-  if (!table) return [];
-  return findAll(table, "tr").flatMap((tr) => {
-    const row = parseRow(findAll(tr, "td"));
-    return row ? [row] : [];
-  });
+  const listings: RawListing[] = [];
+  let skipped = 0;
+  for (const tr of table ? findAll(table, "tr") : []) {
+    const cells = findAll(tr, "td");
+    if (cells.length === 0) continue; // header row
+    const row = parseRow(cells);
+    if (row) listings.push(row);
+    else skipped++;
+  }
+  return { listings, skipped };
 }
 
 function parseRow(cells: El[]): RawListing | null {
   const [dateCell, timeCell, gameCell, competitionCell, channelCell] = cells;
   if (!dateCell || !timeCell || !gameCell || !competitionCell || !channelCell) return null;
   const date = squash(text(dateCell)).match(/\d{2}\/\d{2}/)?.[0];
-  const [home, away] = squash(text(gameCell)).split("×").map(squash);
-  if (!date || !home || !away) return null;
+  const teams = squash(text(gameCell)).split(/\s*×\s*|\s+x\s+/);
+  const [home, away] = teams;
+  if (!date || teams.length !== 2 || !home || !away) return null;
   return {
     date,
     time: squash(text(timeCell)).match(/^\d{2}:\d{2}$/)?.[0] ?? null,
@@ -45,7 +56,10 @@ function parseChannels(cell: El): Channel[] {
     .flatMap((wrapper) => {
       const nameEl = elements(wrapper)[0];
       if (!nameEl) return [];
-      const ownText = squash(nameEl.children.filter((c) => typeof c === "string").join(""));
+      // The name is the span's text minus the <sup>CBF</sup> marker and the "(anunciado pela CBF)" span.
+      const ownText = squash(
+        nameEl.children.map((c) => (typeof c === "string" ? c : c.tag === "sup" || c.tag === "span" ? "" : text(c))).join(""),
+      );
       const name = ownText.replace(/\*$/, "").trim();
       if (!name) return [];
       const isCbf = elements(nameEl).some((el) => el.tag === "sup" && squash(text(el)) === "CBF");

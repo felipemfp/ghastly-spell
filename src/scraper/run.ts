@@ -4,7 +4,7 @@ import { markMissing, upsertMatches } from "../store/matches";
 import { TEAMS } from "../teams";
 import type { FetchPage } from "./adapter";
 import { normalize } from "./normalize";
-import { parseSportune } from "./sportune";
+import { parseSportunePage } from "./sportune";
 
 export interface ScrapeResult {
   teamsOk: string[];
@@ -19,7 +19,8 @@ export async function runScrape(db: D1Database, now: Date, fetchPage: FetchPage)
   // Sequential on purpose: three polite requests per run.
   for (const team of TEAMS) {
     try {
-      const listings = parseSportune(await fetchPage(team.slug));
+      const { listings, skipped } = parseSportunePage(await fetchPage(team.slug));
+      if (skipped > 0) log("scrape.row_skipped", { team: team.slug, rows: skipped }, "error");
       if (listings.length === 0) {
         // Could be a markup change or an outage page. Treat as failed, never as "no matches".
         log("scrape.empty", { team: team.slug }, "error");
@@ -37,7 +38,7 @@ export async function runScrape(db: D1Database, now: Date, fetchPage: FetchPage)
 
   const matches = [...byId.values()];
   await upsertMatches(db, matches, now);
-  await markMissing(db, teamsOk, [...byId.keys()], now);
+  await markMissing(db, teamsOk, TEAMS.map((t) => t.slug), [...byId.keys()], now);
   log("scrape.done", {
     teams_ok: teamsOk,
     matches_upserted: matches.length,

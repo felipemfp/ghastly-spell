@@ -46,17 +46,20 @@ export async function upsertMatches(db: D1Database, matches: Match[], now: Date)
   );
 }
 
-// Future matches of teams that were scraped successfully but are not in this run: count a miss.
-export async function markMissing(db: D1Database, teams: string[], seenIds: string[], now: Date): Promise<void> {
-  if (teams.length === 0) return;
+// Count a miss for future matches not seen in this run, but only when every allowlisted team in the match
+// was scraped successfully: a derby listed on one team's page must not age out because that page failed.
+export async function markMissing(db: D1Database, teamsOk: string[], allowlist: string[], seenIds: string[], now: Date): Promise<void> {
+  if (teamsOk.length === 0) return;
+  const failed = allowlist.filter((t) => !teamsOk.includes(t));
   await db
     .prepare(
       `UPDATE matches SET missing_runs = missing_runs + 1
        WHERE kickoff_date_brt >= ?1
          AND (home_slug IN (SELECT value FROM json_each(?2)) OR away_slug IN (SELECT value FROM json_each(?2)))
-         AND id NOT IN (SELECT value FROM json_each(?3))`,
+         AND home_slug NOT IN (SELECT value FROM json_each(?3)) AND away_slug NOT IN (SELECT value FROM json_each(?3))
+         AND id NOT IN (SELECT value FROM json_each(?4))`,
     )
-    .bind(todayBrt(now), JSON.stringify(teams), JSON.stringify(seenIds))
+    .bind(todayBrt(now), JSON.stringify(teamsOk), JSON.stringify(failed), JSON.stringify(seenIds))
     .run();
 }
 
