@@ -6,7 +6,9 @@ Source idea: [docs/ideas/onde-passa.md](docs/ideas/onde-passa.md)
 
 A per-team URL (`/flamengo`) whose link preview in WhatsApp answers "when is the next match and where do I watch it?" without anyone opening it.
 
-**User:** Felipe and his friends, sharing links in group chats. About 5 Brazilian teams.
+**User:** Felipe and his friends, sharing links in group chats. Day-1 teams: Flamengo, Vasco, São Paulo.
+
+**Public URL:** `https://ondepassa.felipemfp.dev/flamengo` (Workers custom domain on the `felipemfp.dev` zone).
 
 **User stories**
 - As a fan, I paste `/flamengo` in a group and the preview shows opponent, competition, day/time in Brasília time, and the channel(s).
@@ -26,6 +28,31 @@ A per-team URL (`/flamengo`) whose link preview in WhatsApp answers "when is the
 - HTTP: plain `fetch` handler with a ~20-line router (no framework)
 - OG image: `workers-og` (Satori + resvg) for a 1200x630 PNG
 - HTML parsing in the scraper: `HTMLRewriter` (built into Workers) or `linkedom` if the selectors need it
+
+## Data Source: Sportune
+
+Chosen after research on 2026-10-31. Source: `https://sportune.com.br/onde-assistir/<slug>`, one page per team.
+
+| Candidate | Per-team page | Days ahead | Channel status | Verdict |
+|---|---|---|---|---|
+| **sportune.com.br** | yes (`flamengo`, `vasco`, `sao-paulo`, all 200) | next ~5 matches, about a month | per channel: confirmed / "anunciado pela CBF" / `*` unconfirmed | **chosen** |
+| futebolnatv.com.br | no (daily lists) | yesterday, today, tomorrow only | none | backup: too short a horizon for the preview to be useful days ahead |
+| ge.globo.com/agenda | n/a | n/a | n/a | rejected: fetch blocked |
+
+Checked on 2026-10-31:
+- `robots.txt` allows everything except `/api/` and `/auth/`.
+- Data is server-rendered HTML: table 0 = upcoming (`Data | Hora (BRT) | Jogo | Competição / fase | Onde assistir`), table 1 = past results (ignored).
+- It covers every competition seen in the sample: Brasileirão, Copa do Brasil, Libertadores, Sul-Americana.
+- Example rows: `quarta 04/11 19:30 Flamengo × Grêmio Brasileirão Série A Premiere`, `domingo 01/11 16:00 Palmeiras × Vasco da Gama Copa do Brasil · Jogo de ida Globo, Premiere, SporTV, ge tv, Prime Video, Globoplay`.
+
+Parsing rules that follow from the format:
+- **No year in dates** (`04/11`): pick the year that puts the date between 30 days ago and 330 days ahead of the scrape time. Covers the Dec → Jan rollover.
+- **Time may be missing** ("a confirmar"): store `kickoff_utc = NULL` and `kickoff_date_brt`; the card shows `horário a confirmar`.
+- **Channel status:** each channel gets `confirmed`, `cbf` (announced by the CBF) or `tentative` (`*`). The card shows tentative channels as `Premiere (a confirmar)`.
+- **Team names differ from slugs** (`Vasco da Gama`, `Athletico Paranaense`): opponents are stored as the display name from the page. Only the page's own team is matched to a slug.
+- Fetch the 3 team pages sequentially with a plain User-Agent that names the project, once per cron run.
+
+Real HTML snapshots of all three pages are captured at scaffold time into `test/fixtures/sportune/` and are the parser's gate tests.
 - Tests: Vitest + `@cloudflare/vitest-pool-workers`
 - Tooling: `wrangler`
 
@@ -49,7 +76,7 @@ src/
   teams.ts          → team allowlist: slug, display name, aliases used by the scraper
   scraper/
     adapter.ts      → interface ScraperAdapter { fetchListings(): Promise<RawListing[]> }
-    <site>.ts       → the one adapter for the chosen listing site
+    sportune.ts     → the one adapter (see Data Source)
     normalize.ts    → RawListing → Match (team matching, BRT → UTC, channel names)
   store/
     schema.sql      → see migrations/
@@ -77,8 +104,9 @@ CREATE TABLE matches (
   home          TEXT NOT NULL,      -- team slug, or raw name if not in the allowlist
   away          TEXT NOT NULL,
   competition   TEXT NOT NULL,
-  kickoff_utc   TEXT NOT NULL,      -- ISO 8601, UTC
-  channels      TEXT NOT NULL,      -- JSON array, may be []
+  kickoff_date_brt TEXT NOT NULL,   -- YYYY-MM-DD in America/Sao_Paulo
+  kickoff_utc   TEXT,               -- ISO 8601, UTC; NULL while the time is "a confirmar"
+  channels      TEXT NOT NULL,      -- JSON array of {name, status: confirmed|cbf|tentative}, may be []
   first_seen_at TEXT NOT NULL,
   last_seen_at  TEXT NOT NULL,
   missing_runs  INTEGER NOT NULL DEFAULT 0
@@ -95,7 +123,7 @@ CREATE TABLE channel_overrides (
 ```
 
 **Rules**
-- **Next match** for a team = earliest match with `kickoff_utc > now - 2h` and `missing_runs < 2`. The 2h window keeps the card on the current match while it is being played.
+- **Next match** for a team = earliest match with `kickoff_utc > now - 2h` (or, when the time is unknown, `kickoff_date_brt >= today in BRT`) and `missing_runs < 2`. The 2h window keeps the card on the current match while it is being played.
 - **Effective channels** = the override's channels if one exists AND `matches.channels == scraped_snapshot`. Otherwise the scraped channels win, so a scraper update beats a stale crowd fix.
 - **Rescheduling:** a moved match gets a new id. The old row stops being seen, and once `missing_runs >= 2` it is hidden. Rows are never deleted.
 - **Empty scrape:** if a run returns 0 listings, write nothing, log `scrape.empty` at error level, and keep serving the old data.
@@ -135,7 +163,7 @@ export function effectiveChannels(match: Match, override: Override | null): Chan
 
 Gate tests (Vitest in the Workers pool, local, no network, under 2s):
 
-- **normalize:** saved HTML in `test/fixtures/` → expected `Match[]`, including a listing with no channel, a team alias ("Mengão"/"CR Flamengo"), and a late-night match that crosses midnight UTC.
+- **normalize:** saved Sportune HTML in `test/fixtures/sportune/` → expected `Match[]`, covering: a row with no channel, a `*` tentative channel, a CBF-announced channel, a time "a confirmar", a 21:30 match that crosses midnight UTC, a `31/12` → `05/01` year rollover, and the past-results table being ignored.
 - **time:** 21:30 BRT on 2026-11-04 → `2026-11-05T00:30:00Z`, and formatting back gives `qua 04/11 21:30`.
 - **store:** next match selection (2h window, `missing_runs` hiding), the override precedence rule both ways, an empty scrape writes nothing.
 - **web:** `/:team` HTML contains the expected `og:title`, `/:team.ics` parses and has stable UIDs, a wrong passcode returns 403, an unknown team returns 404.
@@ -158,23 +186,28 @@ One JSON log line per event, read with `wrangler tail`:
 ## Boundaries
 
 - **Always:** run `npm test` and `npm run typecheck` before each commit, keep all timezone logic in `time.ts`, respect robots.txt, scrape no more than every 3h, store only "match + channels" facts from the source site.
-- **Ask first:** adding a dependency, changing the schema after the first deploy, changing the cron frequency, `npm run deploy`, adding a second scraped site, adding a team.
+- **Ask first:** adding a dependency, changing the schema after the first deploy, changing the cron frequency, `npm run deploy`, DNS changes on `felipemfp.dev`, adding a second scraped site, adding a team.
 - **Never:** commit the passcode or other secrets (it's a `wrangler secret`), delete match rows, scrape more often than every 3h, rehost the source site's text or images, skip hooks.
 
 ## Success Criteria
 
-1. With the fixture data, `/flamengo` renders `og:title` = `Flamengo x Palmeiras · qua 04/11 21:30` and an OG image under 300 KB.
+1. With the 2026-10-31 Sportune fixture, `/flamengo` renders `og:title` = `Flamengo x Grêmio · qua 04/11 19:30` and an OG image under 300 KB.
 2. Kickoff times on the card, preview and .ics all agree and are correct in BRT (test in `time.test.ts`).
 3. A crowd override shows on the card with "confirmado por N amigos", and is replaced by the scraper's value once the scraper changes (tests both ways).
 4. A scrape that returns 0 listings changes no rows and logs `scrape.empty`.
 5. `/flamengo.ics` imports into Google Calendar and shows the channel in each event title (manual check).
-6. Deployed on the free tier with the cron running every 3-6h. The whole test suite runs in under 2s.
+6. Deployed on the free tier at `ondepassa.felipemfp.dev` with the cron running every 3-6h. The whole test suite runs in under 2s.
 7. The WhatsApp refresh test from Testing Strategy is done, with the result written in this spec.
+
+## Decisions (2026-10-31)
+
+- Source: Sportune (see Data Source).
+- Host: Cloudflare Workers + D1.
+- Override auth: one shared passcode, stored with `wrangler secret put OVERRIDE_PASSCODE`.
+- Teams: `flamengo`, `vasco`, `sao-paulo` (these slugs match Sportune's URLs).
+- Domain: `ondepassa.felipemfp.dev`.
 
 ## Open Questions
 
-1. **Which listing site?** It blocks the scraper adapter. Pick by coverage of all of Flamengo's competitions and how early the channel appears.
-2. **Host:** OK with Cloudflare Workers + D1, or would you rather use Vercel?
-3. **Passcode:** one shared passcode for the group, or a per-friend link?
-4. **Teams on day 1:** which ~5 slugs go in the allowlist?
-5. **Domain:** a custom short domain, or `*.workers.dev` for now? Short links read better in previews.
+1. Is `felipemfp.dev` already on Cloudflare DNS? Workers custom domains need the zone in the same Cloudflare account. If not, use `*.workers.dev` until it moves.
+2. Sportune's "Assistir ↗" links point to the broadcaster. Show them on the card as-is, or leave them out for v1?
