@@ -26,3 +26,11 @@ export function meta(html: string, property: string): string | undefined {
   const m = html.match(new RegExp(`<meta (?:property|name)="${property}" content="([^"]*)"`));
   return m?.[1]?.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'");
 }
+
+// Follows /:team -> /:team/:share-slug the way a browser does, and returns the card page.
+export async function page(team: string, now = NOW): Promise<Response> {
+  const res = await get(`/${team}`, { redirect: "manual" }, now);
+  const location = res.headers.get("location");
+  if (res.status !== 302 || !location) throw new Error(`expected a 302 from /${team}, got ${res.status}`);
+  return get(location, undefined, now);
+}

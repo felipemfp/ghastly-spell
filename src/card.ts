@@ -1,6 +1,6 @@
 import type { Channel, Match } from "./model";
 import type { Effective } from "./store/overrides";
-import type { Team } from "./teams";
+import { slugify, type Team } from "./teams";
 import { formatCardDate, formatCardDateTime } from "./time";
 
 // The text shared by the page, the OG tags, the OG image and the home page.
@@ -15,6 +15,18 @@ export interface Card {
   credit: string; // "confirmado por 2 amigos" or ""
   description: string;
   version: string; // changes whenever the visible content changes
+  shareSlug: string; // "qua-04-11-19-30-premiere": the URL people share, see shareSlugFor
+}
+
+const MAX_SLUG = 80;
+
+// WhatsApp caches a link preview per exact URL, so the shared URL must change whenever the preview would:
+// kickoff day, time and channels (with their "a confirmar" state). Crowd confirmation counts are left out.
+function shareSlugFor(match: Match, channels: Channel[]): string {
+  const when = match.kickoffUtc ? formatCardDateTime(match.kickoffUtc) : formatCardDate(match.kickoffDateBrt);
+  const slug = slugify(`${when} ${channels.length ? channelsText(channels) : "sem canal"}`);
+  if (slug.length <= MAX_SLUG) return slug;
+  return slug.slice(0, MAX_SLUG).replace(/-[^-]*$/, "");
 }
 
 const channelLabel = (c: Channel) => (c.status === "tentative" ? `${c.name} (a confirmar)` : c.name);
@@ -27,7 +39,7 @@ export function buildCard(team: Team, match: Match | null, effective: Effective 
   if (!match || !effective) {
     const title = `${team.name} · Sem jogos marcados`;
     const description = "Nenhum jogo marcado nas próximas semanas.";
-    return { team, match: null, matchup: team.name, when: "", title, competition: "", channelsText: "", credit: "", description, version: hash(title) };
+    return { team, match: null, matchup: team.name, when: "", title, competition: "", channelsText: "", credit: "", description, version: hash(title), shareSlug: "sem-jogos" };
   }
   const matchup = `${match.home} x ${match.away}`;
   const when = match.kickoffUtc ? formatCardDateTime(match.kickoffUtc) : `${formatCardDate(match.kickoffDateBrt)}, horário a confirmar`;
@@ -36,7 +48,10 @@ export function buildCard(team: Team, match: Match | null, effective: Effective 
   const credit = effective.source === "crowd" ? `confirmado por ${n} ${n === 1 ? "amigo" : "amigos"}` : "";
   const title = `${matchup} · ${when}`;
   const description = [match.competition, text, credit].filter(Boolean).join(" · ");
-  return { team, match, matchup, when, title, competition: match.competition, channelsText: text, credit, description, version: hash(title + description) };
+  return {
+    team, match, matchup, when, title, competition: match.competition, channelsText: text, credit, description,
+    version: hash(title + description), shareSlug: shareSlugFor(match, effective.channels),
+  };
 }
 
 // FNV-1a, enough to bust preview caches; not security.

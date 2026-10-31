@@ -34,9 +34,11 @@ export async function handle(request: Request, env: Env, now: Date, renderPng: R
   }
 
   const ics = path.match(/^\/([a-z0-9-]+)\.ics$/);
-  const page = path.match(/^\/([a-z0-9-]+)(\/og\.png)?\/?$/);
+  const bare = path.match(/^\/([a-z0-9-]+)\/?$/);
+  const og = path.match(/^\/([a-z0-9-]+)\/og\.png$/);
+  const card = path.match(/^\/([a-z0-9-]+)\/([a-z0-9-]+)$/);
   const override = path.match(/^\/([a-z0-9-]+)\/([^/]+)\/channel$/);
-  const team = findTeam((ics ?? page ?? override)?.[1] ?? "");
+  const team = findTeam((ics ?? bare ?? og ?? card ?? override)?.[1] ?? "");
   if (!team) return renderNotFound();
 
   if (request.method === "POST" && override) {
@@ -60,15 +62,22 @@ export async function handle(request: Request, env: Env, now: Date, renderPng: R
       headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "public, max-age=1800" },
     });
   }
-  if (page) {
-    const card = await cardFor(env.DB, team, now);
-    if (page[2]) {
-      const png = await renderOg(card, renderPng);
-      log("og.render", { team: team.slug, bytes: png.length });
-      return new Response(png, { headers: { "content-type": "image/png", "cache-control": "public, max-age=300" } });
-    }
-    log("page.view", { team: team.slug });
-    return renderTeamPage(card, url.origin);
+  if (bare) {
+    // Always send people to the URL of the current preview text (see shareSlugFor in card.ts).
+    const current = await cardFor(env.DB, team, now);
+    return new Response(null, { status: 302, headers: { location: `/${team.slug}/${current.shareSlug}`, "cache-control": "no-store" } });
+  }
+  if (og) {
+    const current = await cardFor(env.DB, team, now);
+    const png = await renderOg(current, renderPng);
+    log("og.render", { team: team.slug, bytes: png.length });
+    return new Response(png, { headers: { "content-type": "image/png", "cache-control": "public, max-age=300" } });
+  }
+  if (card) {
+    // Any slug, current or old, shows the current card; og:url names the current share URL.
+    const current = await cardFor(env.DB, team, now);
+    log("page.view", { team: team.slug, slug: card[2], current: card[2] === current.shareSlug });
+    return renderTeamPage(current, url.origin);
   }
   return renderNotFound();
 }

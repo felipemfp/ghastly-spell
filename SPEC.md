@@ -137,7 +137,8 @@ CREATE TABLE channel_overrides (
 | Route | Response | Cache |
 |---|---|---|
 | `GET /` | List of allowlisted teams, each with its next match | `max-age=300` |
-| `GET /:team` | HTML card + OG/Twitter meta. `og:title` = `Flamengo x Palmeiras · qua 04/11 21:30` `og:description` = `Brasileirão · Premiere, Globo` (or `Canal ainda não divulgado`) | `max-age=300` |
+| `GET /:team` | 302 to `/:team/<share slug>` of the current card, e.g. `/flamengo/qua-04-11-19-30-premiere` | `no-store` |
+| `GET /:team/:slug` | HTML card + OG/Twitter meta for the CURRENT card, whatever the slug. `og:url` = current share URL. `og:title` = `Flamengo x Grêmio · qua 04/11 19:30`, `og:description` = `Brasileirão Série A · Premiere` (or `Canal ainda não divulgado`). "Compartilhar no grupo" button (Web Share API, clipboard fallback) | `max-age=300` |
 | `GET /:team/og.png` | 1200x630 PNG, same content as the card, target < 300 KB | `max-age=300` |
 | `GET /:team.ics` | RFC 5545 feed: next 60 days, `UID` = `<match id>@<host>`, `SUMMARY` = `Flamengo x Palmeiras (Premiere)`, `DTSTART` in UTC, 2h duration | `max-age=1800` |
 | `POST /:team/:matchId/channel` | Form fields `channels` and `passcode`. 303 back to `/:team` on success, 403 on a wrong passcode, 404 for an unknown match | none |
@@ -177,6 +178,8 @@ Rules: write the failing test first. Every bug gets a regression test. No snapsh
 
 Manual check before calling the MVP done: share `/flamengo` in a real WhatsApp chat, change the data, share it again, and record whether the preview updated (idea assumption 1).
 
+**Result (2026-10-31, deployed Worker):** WhatsApp caches the preview per exact URL. After changing the channel to `Premiere (teste)`, a reshare of `/flamengo` still showed `Premiere`; `/flamengo?r=1` showed `Premiere (teste)`. Decision (Felipe): share a readable content URL, `/:team/<kickoff>-<channels>`, built from the same text as the preview (`shareSlug` in `src/card.ts`), so the URL changes exactly when the preview would. `/:team` redirects to it; old share URLs still open and show the current card. Pinned by `test/share-url.test.ts`. The `page.view` log records `current: false` when someone opens an outdated link.
+
 No LLM components, so no eval suite.
 
 ## Observability
@@ -201,7 +204,7 @@ One JSON log line per event, read with `wrangler tail`:
 4. A scrape that returns 0 listings changes no rows and logs `scrape.empty`.
 5. `/flamengo.ics` imports into Google Calendar and shows the channel in each event title (manual check).
 6. Deployed on the free tier at `*.workers.dev` with the cron running every 3-6h. The whole test suite runs in under 2s.
-7. The WhatsApp refresh test from Testing Strategy is done, with the result written in this spec.
+7. The WhatsApp refresh test from Testing Strategy is done, with the result written in this spec. (Done: per-URL cache, solved with share slugs.)
 
 ## Decisions (2026-10-31)
 

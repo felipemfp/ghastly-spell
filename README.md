@@ -13,12 +13,15 @@ A Cloudflare Worker. Every 4 hours a cron reads the Sportune page of each team i
 | Route | What |
 |---|---|
 | `/` | Every team's next match |
-| `/:team` | Card page with Open Graph tags (the preview) |
+| `/:team` | Redirects to the current share URL, e.g. `/flamengo/qua-04-11-19-30-premiere` |
+| `/:team/:slug` | Card page with Open Graph tags (the preview). Any slug shows the current card |
 | `/:team/og.png` | 1200x630 preview image |
 | `/:team.ics` | Calendar feed, next 60 days, channel in the event title |
 | `POST /:team/:matchId/channel` | Friends fix a missing or wrong channel (shared passcode) |
 
 A friend's fix shows until Sportune's value for that match changes. Then Sportune wins again.
+
+**Why the URL has the match in it:** WhatsApp caches a link preview per exact URL, so resharing the same link shows the old channel. The share URL is built from the preview text (kickoff and channels), so it changes exactly when the preview does. Share with the "Compartilhar no grupo" button, or open `/flamengo` and share the address it lands on.
 
 ## Setup
 

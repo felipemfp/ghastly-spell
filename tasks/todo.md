@@ -130,8 +130,8 @@ Spec: [SPEC.md](../SPEC.md). Plan: [plan.md](plan.md). Every task: write the fai
 
 **Acceptance criteria:**
 - [x] `https://onde-passa.onde-passa.workers.dev/flamengo` serves the card with live data
-- [ ] Shared in a real WhatsApp chat, the preview shows the match and channel
-- [ ] Refresh test (share, change data, share again) done, with the result written into SPEC.md. If stale, a follow-up task for match-specific URLs is added here
+- [x] Shared in a real WhatsApp chat, the preview shows the match and channel
+- [x] Refresh test (share, change data, share again) done, with the result written into SPEC.md. If stale, a follow-up task for match-specific URLs is added here
 
 **Verification:**
 - [ ] `wrangler tail` shows `scrape.done` after the first cron run
@@ -218,3 +218,4 @@ Spec: [SPEC.md](../SPEC.md). Plan: [plan.md](plan.md). Every task: write the fai
 - Cold critic review: SHIP with 8 findings. All fixed with regression tests in `test/hardening.test.ts`.
 - Open: full suite wall time is ~9s (workerd boot per test file), above the SPEC's 2s target.
 - 2026-10-31 deploy: D1 `onde-passa` created and migrated, Worker live at https://onde-passa.onde-passa.workers.dev, cron `0 */4 * * *`. Seeded with a local scrape of live Sportune (17 matches) because `wrangler dev --remote` failed TLS while the new workers.dev subdomain was provisioning. Every route smoke-tested live. Pending: `OVERRIDE_PASSCODE` secret, first cron run in `wrangler tail`, WhatsApp test.
+- 2026-10-31 WhatsApp test: previews are cached per exact URL. Fixed with content share URLs (`/flamengo/qua-04-11-19-30-premiere`), Felipe's pick over match-only URLs because channels are announced late. 85 tests pass.
