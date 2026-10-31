@@ -2,12 +2,12 @@ import { env } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 import { effectiveChannels } from "../src/store/overrides";
 import type { Match } from "../src/model";
-import { get, meta, NOW, PAGES, postForm, scrapeFixtures } from "./helpers";
+import { get, meta, NOW, page, PAGES, postForm, scrapeFixtures } from "./helpers";
 import { runScrape } from "../src/scraper/run";
 
 const GREMIO = "flamengo-gremio-brasileirao-serie-a-2026-11-04";
 const fix = (channels: string, passcode = "test-pass") => postForm(`/flamengo/${GREMIO}/channel`, { channels, passcode });
-const description = async () => meta(await (await get("/flamengo")).text(), "og:description");
+const description = async () => meta(await (await page("flamengo")).text(), "og:description");
 
 describe("POST /:team/:matchId/channel", () => {
   it("saves a fix, redirects, and shows it on the card", async () => {

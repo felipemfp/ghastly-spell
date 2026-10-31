@@ -3,16 +3,18 @@ import { esc, htmlResponse, layout } from "./html";
 
 export function renderTeamPage(card: Card, origin: string): Response {
   const slug = card.team.slug;
+  const shareUrl = `${origin}/${slug}/${card.shareSlug}`;
   const image = `${origin}/${slug}/og.png?v=${card.version}`;
   const head = [
     ["og:type", "website"], ["og:site_name", "Onde Passa"], ["og:title", card.title], ["og:description", card.description],
-    ["og:url", `${origin}/${slug}`], ["og:image", image], ["og:image:width", "1200"], ["og:image:height", "630"],
+    ["og:url", shareUrl], ["og:image", image], ["og:image:width", "1200"], ["og:image:height", "630"],
   ].map(([p, c]) => `<meta property="${p}" content="${esc(c!)}">`)
     .concat([
       `<meta name="twitter:card" content="summary_large_image">`,
       `<meta name="description" content="${esc(card.description)}">`,
+      `<link rel="canonical" href="${esc(shareUrl)}">`,
     ]).join("\n");
-  return htmlResponse(layout(card.title, head, `<p class="eyebrow">Próximo jogo do ${esc(card.team.name)}</p>\n${cardHtml(card)}\n${actions(card)}`));
+  return htmlResponse(layout(card.title, head, `<p class="eyebrow">Próximo jogo do ${esc(card.team.name)}</p>\n${cardHtml(card)}\n${shareButton(shareUrl)}\n${actions(card)}`));
 }
 
 export function cardHtml(card: Card, link?: string): string {
@@ -45,4 +47,17 @@ ${calendar}
 </form>
 </details>
 </div>`;
+}
+
+// The link to share is this page's current URL. Old links keep working but WhatsApp would show their cached preview.
+function shareButton(shareUrl: string): string {
+  return `<p><button type="button" data-share-url="${esc(shareUrl)}">Compartilhar no grupo</button></p>
+<script>
+document.querySelector("[data-share-url]").addEventListener("click", async (e) => {
+  const url = e.currentTarget.dataset.shareUrl;
+  if (navigator.share) { try { await navigator.share({ url }); } catch {} return; }
+  await navigator.clipboard.writeText(url);
+  e.currentTarget.textContent = "Link copiado";
+});
+</script>`;
 }

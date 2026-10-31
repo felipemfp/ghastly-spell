@@ -21,7 +21,8 @@ describe("home and 404", () => {
   });
 
   it("404s unknown paths under a team", async () => {
-    expect((await get("/flamengo/whatever")).status).toBe(404);
+    expect((await get("/flamengo/a/b")).status).toBe(404);
+    expect((await get("/flamengo/UPPER")).status).toBe(404);
     expect((await get("/botafogo.ics")).status).toBe(404);
   });
 });

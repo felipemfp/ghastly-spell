@@ -90,7 +90,7 @@ describe("request edge cases", () => {
   });
   it("answers HEAD like GET without a body", async () => {
     await scrapeFixtures();
-    const res = await get("/flamengo", { method: "HEAD" });
+    const res = await get("/flamengo/qua-04-11-19-30-premiere", { method: "HEAD" });
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("");
   });
