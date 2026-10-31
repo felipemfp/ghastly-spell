@@ -2,6 +2,10 @@ name = "onde-passa"
 main = "src/index.ts"
 compatibility_date = "2026-10-15"
 
+# Custom domain: Cloudflare creates the DNS record and certificate on deploy. workers.dev stays on too.
+routes = [{ pattern = "ondepassa.felipemfp.dev", custom_domain = true }]
+workers_dev = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "onde-passa"
