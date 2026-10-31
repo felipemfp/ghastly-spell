@@ -8,7 +8,7 @@ A per-team URL (`/flamengo`) whose link preview in WhatsApp answers "when is the
 
 **User:** Felipe and his friends, sharing links in group chats. Day-1 teams: Flamengo, Vasco, São Paulo.
 
-**Public URL:** `https://ondepassa.felipemfp.dev/flamengo` (Workers custom domain on the `felipemfp.dev` zone).
+**Public URL:** v1 on `onde-passa.<account>.workers.dev/flamengo`; `ondepassa.felipemfp.dev` later (see Decisions).
 
 **User stories**
 - As a fan, I paste `/flamengo` in a group and the preview shows opponent, competition, day/time in Brasília time, and the channel(s).
@@ -196,7 +196,7 @@ One JSON log line per event, read with `wrangler tail`:
 3. A crowd override shows on the card with "confirmado por N amigos", and is replaced by the scraper's value once the scraper changes (tests both ways).
 4. A scrape that returns 0 listings changes no rows and logs `scrape.empty`.
 5. `/flamengo.ics` imports into Google Calendar and shows the channel in each event title (manual check).
-6. Deployed on the free tier at `ondepassa.felipemfp.dev` with the cron running every 3-6h. The whole test suite runs in under 2s.
+6. Deployed on the free tier at `*.workers.dev` with the cron running every 3-6h. The whole test suite runs in under 2s.
 7. The WhatsApp refresh test from Testing Strategy is done, with the result written in this spec.
 
 ## Decisions (2026-10-31)
@@ -207,7 +207,9 @@ One JSON log line per event, read with `wrangler tail`:
 - Teams: `flamengo`, `vasco`, `sao-paulo` (these slugs match Sportune's URLs).
 - Domain: `ondepassa.felipemfp.dev`.
 
+- Domain (updated): `felipemfp.dev` is on Namecheap DNS. A Workers custom domain needs the zone on Cloudflare, and a Namecheap CNAME to `*.workers.dev` does not work. v1 ships on `onde-passa.<account>.workers.dev`. Moving the nameservers to Cloudflare later enables `ondepassa.felipemfp.dev` with no code change (Felipe's call, ask first).
+- Broadcaster "Assistir ↗" links: not shown in v1. The scraper ignores them.
+
 ## Open Questions
 
-1. Is `felipemfp.dev` already on Cloudflare DNS? Workers custom domains need the zone in the same Cloudflare account. If not, use `*.workers.dev` until it moves.
-2. Sportune's "Assistir ↗" links point to the broadcaster. Show them on the card as-is, or leave them out for v1?
+None blocking.
