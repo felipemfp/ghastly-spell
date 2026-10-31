@@ -144,7 +144,7 @@ Spec: [SPEC.md](../SPEC.md). Plan: [plan.md](plan.md). Every task: write the fai
 **Estimated scope:** S
 
 ## Checkpoint B: shareable link
-- [ ] A real WhatsApp preview works
+- [x] A real WhatsApp preview works
 - [ ] Felipe reviews before Phase 3
 
 ## Phase 3: Around the preview
@@ -219,3 +219,4 @@ Spec: [SPEC.md](../SPEC.md). Plan: [plan.md](plan.md). Every task: write the fai
 - Open: full suite wall time is ~9s (workerd boot per test file), above the SPEC's 2s target.
 - 2026-10-31 deploy: D1 `onde-passa` created and migrated, Worker live at https://onde-passa.onde-passa.workers.dev, cron `0 */4 * * *`. Seeded with a local scrape of live Sportune (17 matches) because `wrangler dev --remote` failed TLS while the new workers.dev subdomain was provisioning. Every route smoke-tested live. Pending: `OVERRIDE_PASSCODE` secret, first cron run in `wrangler tail`, WhatsApp test.
 - 2026-10-31 WhatsApp test: previews are cached per exact URL. Fixed with content share URLs (`/flamengo/qua-04-11-19-30-premiere`), Felipe's pick over match-only URLs because channels are announced late. 85 tests pass.
+- 2026-10-31 WhatsApp end-to-end: reshare after a channel change showed the new channel. Task 7 done except the first cron run, due 20:00 UTC.

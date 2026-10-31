@@ -178,7 +178,7 @@ Rules: write the failing test first. Every bug gets a regression test. No snapsh
 
 Manual check before calling the MVP done: share `/flamengo` in a real WhatsApp chat, change the data, share it again, and record whether the preview updated (idea assumption 1).
 
-**Result (2026-10-31, deployed Worker):** WhatsApp caches the preview per exact URL. After changing the channel to `Premiere (teste)`, a reshare of `/flamengo` still showed `Premiere`; `/flamengo?r=1` showed `Premiere (teste)`. Decision (Felipe): share a readable content URL, `/:team/<kickoff>-<channels>`, built from the same text as the preview (`shareSlug` in `src/card.ts`), so the URL changes exactly when the preview would. `/:team` redirects to it; old share URLs still open and show the current card. Pinned by `test/share-url.test.ts`. The `page.view` log records `current: false` when someone opens an outdated link.
+**Result (2026-10-31, deployed Worker):** WhatsApp caches the preview per exact URL. After changing the channel to `Premiere (teste)`, a reshare of `/flamengo` still showed `Premiere`; `/flamengo?r=1` showed `Premiere (teste)`. Decision (Felipe): share a readable content URL, `/:team/<kickoff>-<channels>`, built from the same text as the preview (`shareSlug` in `src/card.ts`), so the URL changes exactly when the preview would. `/:team` redirects to it; old share URLs still open and show the current card. Pinned by `test/share-url.test.ts`. The `page.view` log records `current: false` when someone opens an outdated link. **Verified live the same day:** shared from the "Compartilhar no grupo" button, changed the channel to `Premiere (teste)`, reshared: the link became `…-premiere-teste` and WhatsApp showed the new channel.
 
 No LLM components, so no eval suite.
 

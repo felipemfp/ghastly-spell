@@ -47,7 +47,7 @@ scaffold (wrangler, vitest, fixtures)
 ### Phase 2: The preview (the product)
 - [x] Task 5: `GET /:team` card page with OG meta
 - [x] Task 6: `GET /:team/og.png`
-- [ ] Task 7: First deploy to workers.dev and the WhatsApp refresh test
+- [x] Task 7: First deploy to workers.dev and the WhatsApp refresh test
 
 ### Checkpoint B: shareable link
 - [ ] A real WhatsApp share of `/flamengo` shows the next match and channel
