@@ -1,5 +1,7 @@
 # Onde Passa
 
+Live: https://ondepassa.felipemfp.dev/flamengo
+
 Where to watch your team's next match, answered by the link preview. Share `/flamengo` in a WhatsApp group and the preview shows the opponent, the kickoff time in Brasília, and the channel.
 
 - Idea: [docs/ideas/onde-passa.md](docs/ideas/onde-passa.md)

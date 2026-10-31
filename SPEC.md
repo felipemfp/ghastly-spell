@@ -8,7 +8,7 @@ A per-team URL (`/flamengo`) whose link preview in WhatsApp answers "when is the
 
 **User:** Felipe and his friends, sharing links in group chats. Day-1 teams: Flamengo, Vasco, São Paulo.
 
-**Public URL:** v1 on `onde-passa.<account>.workers.dev/flamengo`; `ondepassa.felipemfp.dev` later (see Decisions).
+**Public URL:** `https://ondepassa.felipemfp.dev/flamengo` (Workers custom domain). `https://onde-passa.onde-passa.workers.dev` stays on so links shared before the move keep working.
 
 **User stories**
 - As a fan, I paste `/flamengo` in a group and the preview shows opponent, competition, day/time in Brasília time, and the channel(s).
@@ -203,7 +203,7 @@ One JSON log line per event, read with `wrangler tail`:
 3. A crowd override shows on the card with "confirmado por N amigos", and is replaced by the scraper's value once the scraper changes (tests both ways).
 4. A scrape that returns 0 listings changes no rows and logs `scrape.empty`.
 5. `/flamengo.ics` imports into Google Calendar and shows the channel in each event title (manual check).
-6. Deployed on the free tier at `*.workers.dev` with the cron running every 3-6h. The whole test suite runs in under 2s.
+6. Deployed on the free tier at `ondepassa.felipemfp.dev` (and `*.workers.dev`) with the cron running every 3-6h. The whole test suite runs in under 2s.
 7. The WhatsApp refresh test from Testing Strategy is done, with the result written in this spec. (Done: per-URL cache, solved with share slugs.)
 
 ## Decisions (2026-10-31)
@@ -215,6 +215,7 @@ One JSON log line per event, read with `wrangler tail`:
 - Domain: `ondepassa.felipemfp.dev`.
 
 - Domain (updated): `felipemfp.dev` is on Namecheap DNS. A Workers custom domain needs the zone on Cloudflare, and a Namecheap CNAME to `*.workers.dev` does not work. v1 ships on `onde-passa.<account>.workers.dev`. Moving the nameservers to Cloudflare later enables `ondepassa.felipemfp.dev` with no code change (Felipe's call, ask first).
+- Domain (2026-10-31, done): Felipe moved `felipemfp.dev` DNS to Cloudflare (registration stays at Namecheap). `wrangler.toml` has a `custom_domain` route; Cloudflare created the record and certificate on deploy.
 - Broadcaster "Assistir ↗" links: not shown in v1. The scraper ignores them.
 
 ## Open Questions
