@@ -90,6 +90,20 @@ npx wrangler secret put OVERRIDE_PASSCODE
 npm run deploy
 ```
 
+The database stays empty until the first cron run (every 4h, on the hour UTC). To fill it right away, scrape locally and copy the rows:
+
+```bash
+npm run scrape:local
+```
+
+```bash
+npx wrangler d1 export onde-passa --local --table matches --no-schema --output seed.sql
+```
+
+```bash
+npx wrangler d1 execute onde-passa --remote --file seed.sql --yes
+```
+
 Watch the logs (`scrape.done`, `scrape.empty`, `page.view`, `og.render`, `ics.fetch`, `override.saved`):
 
 ```bash
